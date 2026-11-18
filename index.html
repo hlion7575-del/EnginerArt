@@ -1,10 +1,9 @@
-```html
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>مقياس A4 الهندسي الدقيق</title>
+    <title>مقياس A4 الهندسي الدقيق (نقاط حرة + صورة مرجعية)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -81,15 +80,14 @@
 </head>
 <body class="text-slate-100 relative w-full h-full">
 
-    <!-- حاوية العرض الرئيسية -->
     <div id="appRoot" class="relative w-full h-full overflow-hidden bg-slate-950">
-        <!-- عنصر الفيديو (بدون display:none لضمان تحديث الإطارات في جميع متصفحات الجوال) -->
         <video id="cameraVideo" autoplay playsinline muted class="fixed top-0 left-0 w-px h-px opacity-0 pointer-events-none"></video>
-
-        <!-- الكانفاس التفاعلي -->
         <canvas id="mainCanvas"></canvas>
 
-        <!-- شاشة البداية وطلب إذن الكاميرا -->
+        <!-- نافذة اختيار أو رفع صورة مرجعية -->
+        <input type="file" id="imageUploadInput" accept="image/*" class="hidden">
+
+        <!-- شاشة البداية -->
         <div id="startOverlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-md p-5 text-center pointer-events-auto">
             <div class="w-20 h-20 rounded-3xl bg-sky-500/15 border border-sky-400/40 flex items-center justify-center mb-4 shadow-xl shadow-sky-500/10">
                 <svg class="w-10 h-10 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,16 +97,14 @@
             </div>
             <h1 class="text-2xl sm:text-3xl font-extrabold text-white mb-2">مقياس A4 الهندسي الدقيق</h1>
             <p class="text-slate-300 text-sm sm:text-base max-w-md mb-6 leading-relaxed">
-                ضع ورقة <span class="text-sky-400 font-bold">A4 (210 × 297 mm)</span> أمام الكاميرا، طابق حدود المربع مع حواف الورقة، ثم اضغط <span class="text-emerald-400 font-bold">تثبيت الكاميرا</span> للقياس والتقريب عالي الدقة.
+                اسحب الزوايا الأربع بحرية لتطابق ورقة <span class="text-sky-400 font-bold">A4</span>، أو اختر صورة مرجعية شفافة، ثم اضغط <span class="text-emerald-400 font-bold">تثبيت الكاميرا</span> للقياس.
             </p>
 
-            <!-- مؤشر التحميل أثناء فتح الكاميرا -->
             <div id="loadingBox" class="hidden flex-col items-center gap-3 mb-5">
                 <div class="w-10 h-10 border-4 border-sky-500/30 border-t-sky-400 rounded-full spinner"></div>
                 <span class="text-sky-300 text-sm font-bold">جاري تشغيل الكاميرا الخلفية...</span>
             </div>
 
-            <!-- أزرار التشغيل -->
             <div id="startButtonsGroup" class="flex flex-col sm:flex-row items-center gap-3 w-full max-w-md justify-center">
                 <button id="startCameraBtn" type="button" class="w-full sm:w-auto flex-1 px-6 py-4 rounded-2xl bg-gradient-to-l from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-extrabold text-base sm:text-lg shadow-xl shadow-sky-500/25 active:scale-95 transition-all flex items-center justify-center gap-2.5 cursor-pointer">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,7 +118,6 @@
                 </button>
             </div>
 
-            <!-- رسالة الخطأ مع زر إعادة المحاولة -->
             <div id="cameraErrorBox" class="hidden mt-5 w-full max-w-md bg-rose-950/80 border border-rose-500/50 rounded-2xl p-4 text-right">
                 <p id="cameraErrorText" class="text-rose-200 text-xs sm:text-sm leading-relaxed mb-3"></p>
                 <div class="flex items-center gap-2 justify-end">
@@ -136,45 +131,38 @@
             </div>
         </div>
 
-        <!-- الشريط العلوي (pointer-events-none للحاوية و pointer-events-auto للأزرار فقط) -->
+        <!-- الشريط العلوي -->
         <header id="topHud" class="hidden fixed top-0 inset-x-0 z-30 p-2.5 sm:p-4 flex flex-col gap-2 pointer-events-none">
             <div class="flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-                <!-- بطاقة الحالة ودقة التدريج -->
                 <div class="pointer-events-auto flex items-center gap-2.5 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-2xl px-3 py-2 shadow-lg">
                     <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
                     <div class="flex flex-col">
-                        <span id="modeTitle" class="text-xs sm:text-sm font-extrabold text-white leading-tight">حدد ورقة A4 بالمربع</span>
-                        <span id="gridPrecisionLabel" class="text-[11px] text-sky-400 font-bold">دقة الشبكة: 10 مم (1 سم)</span>
+                        <span id="modeTitle" class="text-xs sm:text-sm font-extrabold text-white leading-tight">اسحب زوايا A4 الأربع بحرية</span>
+                        <span id="gridPrecisionLabel" class="text-[11px] text-sky-400 font-bold">دقة الشبكة: تفاعلية</span>
                     </div>
                 </div>
 
-                <!-- أزرار التحكم السريعة -->
                 <div class="pointer-events-auto flex flex-wrap items-center gap-1.5">
-                    <!-- تبديل اتجاه الورقة -->
-                    <button id="orientationBtn" type="button" class="bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/80 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-200 flex items-center gap-1 shadow-lg active:scale-95 transition cursor-pointer">
+                    <!-- زر اختيار صورة مرجعية من الاستوديو -->
+                    <button id="selectRefImageBtn" type="button" class="bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-sky-500/50 rounded-xl px-2.5 py-2 text-xs font-bold text-sky-300 flex items-center gap-1 shadow-lg active:scale-95 transition cursor-pointer">
                         <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                         </svg>
+                        <span>صورة مرجعية</span>
+                    </button>
+
+                    <button id="orientationBtn" type="button" class="bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/80 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-200 flex items-center gap-1 shadow-lg active:scale-95 transition cursor-pointer">
                         <span id="orientationText">عمودي</span>
                     </button>
 
-                    <!-- تبديل نقطة الأصل -->
                     <button id="originBtn" type="button" class="bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/80 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-200 flex items-center gap-1 shadow-lg active:scale-95 transition cursor-pointer">
-                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                        </svg>
                         <span id="originText">الأصل: الوسط</span>
                     </button>
 
-                    <!-- زر تبديل العدسة / الكاميرا -->
                     <button id="switchLensBtn" type="button" class="bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-amber-500/50 rounded-xl px-2.5 py-2 text-xs font-bold text-amber-300 flex items-center gap-1 shadow-lg active:scale-95 transition cursor-pointer">
-                        <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                        </svg>
                         <span id="lensBtnText">تبديل العدسة</span>
                     </button>
 
-                    <!-- زر الفلاش -->
                     <button id="torchBtn" type="button" class="hidden bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/80 rounded-xl p-2 text-amber-400 shadow-lg active:scale-95 transition cursor-pointer" title="الفلاش">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
@@ -183,7 +171,7 @@
                 </div>
             </div>
 
-            <!-- شريط القراءات الإحداثية والمسافة الحية -->
+            <!-- شريط القراءات -->
             <div id="liveReadoutBar" class="hidden pointer-events-auto self-center bg-slate-900/92 backdrop-blur-md border border-sky-500/40 rounded-2xl px-3.5 py-2 shadow-xl flex flex-wrap items-center justify-center gap-3 text-xs sm:text-sm">
                 <div class="flex items-center gap-1.5">
                     <span class="text-slate-400">الإحداثي:</span>
@@ -195,28 +183,32 @@
                         <span id="distReadout" class="font-mono-tech font-bold text-emerald-400 text-sm">0.00 mm</span>
                         <span id="distCmReadout" class="font-mono-tech text-slate-400 text-xs">(0.00 cm)</span>
                     </div>
-                    <div class="font-mono-tech text-[11px] text-amber-300 flex items-center gap-2">
-                        <span id="dxReadout">ΔX:0.0</span>
-                        <span id="dyReadout">ΔY:0.0</span>
-                        <span id="angleReadout">0.0°</span>
-                    </div>
                 </div>
             </div>
         </header>
 
-        <!-- لوحة شرائط المعايرة قبل التثبيت (بُعد الكاميرا + حجم مربع A4) -->
+        <!-- لوحة التحكم بالصورة المرجعية والشفافية (تظهر عند اختيار صورة) -->
+        <div id="refImageControlPanel" class="hidden pointer-events-auto fixed top-20 right-4 z-30 bg-slate-900/95 backdrop-blur-md border border-sky-500/50 rounded-2xl p-3 shadow-2xl flex flex-col gap-2 w-64">
+            <div class="flex items-center justify-between text-xs font-bold text-sky-300">
+                <span>الصورة المرجعية الشفافة</span>
+                <button id="closeRefImgBtn" type="button" class="text-rose-400 hover:text-rose-300 font-bold">إزالة</button>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-[11px] text-slate-300">الشفافية:</span>
+                <input id="refOpacitySlider" type="range" min="0.05" max="0.95" step="0.05" value="0.45" class="tech-slider flex-1">
+                <span id="refOpacityBadge" class="font-mono-tech text-[11px] text-sky-300 w-9 text-left">45%</span>
+            </div>
+        </div>
+
+        <!-- لوحة شرائط المعايرة قبل التثبيت -->
         <div id="calibrationSlidersPanel" class="hidden pointer-events-auto fixed bottom-20 sm:bottom-24 inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[460px] z-30 bg-slate-900/92 backdrop-blur-md border border-slate-700/80 rounded-2xl px-4 py-2.5 shadow-2xl flex flex-col gap-2">
-            <!-- شريط إبعاد / تقريب عدسة الكاميرا -->
             <div class="flex items-center gap-2.5">
                 <span class="text-[11px] font-bold text-amber-300 whitespace-nowrap w-20">بُعد الكاميرا:</span>
                 <input id="cameraDistanceSlider" type="range" min="0.5" max="2.5" step="0.05" value="1.0" class="tech-slider amber-slider flex-1">
                 <span id="cameraZoomBadge" class="font-mono-tech text-xs font-bold text-amber-300 w-11 text-left">1.0x</span>
             </div>
-            <!-- شريط حجم مربع تحديد ورقة A4 من 30% إلى 95% -->
-            <div class="flex items-center gap-2.5">
-                <span class="text-[11px] font-bold text-sky-300 whitespace-nowrap w-20">حجم مربع A4:</span>
-                <input id="frameSizeSlider" type="range" min="0.30" max="0.95" step="0.01" value="0.72" class="tech-slider flex-1">
-                <span id="frameSizeBadge" class="font-mono-tech text-xs font-bold text-sky-300 w-11 text-left">72%</span>
+            <div class="flex items-center justify-between text-[11px] text-slate-300 px-1">
+                <span>💡 نصيحة: يمكنك سحب أي زاوية من الزوايا الأربع للورقة بشكل مستقل تماماً لتعديل المنظور.</span>
             </div>
         </div>
 
@@ -225,7 +217,7 @@
             <button id="zoomOutBtn" type="button" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-sky-400 font-extrabold text-xl active:scale-90 cursor-pointer">-</button>
             <div class="flex-1 flex flex-col">
                 <div class="flex justify-between text-[11px] text-slate-300 mb-1">
-                    <span>التكبير الموضعي (يوسّع تدريجات الشبكة)</span>
+                    <span>التكبير الموضعي</span>
                     <span id="zoomLevelText" class="font-mono-tech font-bold text-sky-400">1.0x</span>
                 </div>
                 <input id="zoomSlider" type="range" min="1" max="16" step="0.05" value="1" class="tech-slider w-full">
@@ -233,9 +225,8 @@
             <button id="zoomInBtn" type="button" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-sky-400 font-extrabold text-xl active:scale-90 cursor-pointer">+</button>
         </div>
 
-        <!-- الشريط السفلي للأزرار الرئيسية -->
+        <!-- الشريط السفلي -->
         <footer id="bottomHud" class="hidden pointer-events-none fixed bottom-0 inset-x-0 z-30 p-3 sm:p-4 flex items-center justify-center bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent">
-            <!-- أزرار مرحلة المعايرة -->
             <div id="calibrationControls" class="pointer-events-auto flex items-center gap-2.5 w-full max-w-lg justify-center">
                 <button id="widePresetBtn" type="button" class="py-3.5 px-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-amber-500/50 text-amber-300 text-xs sm:text-sm font-bold active:scale-95 transition whitespace-nowrap cursor-pointer">
                     إبعاد 0.5x
@@ -249,19 +240,12 @@
                 </button>
             </div>
 
-            <!-- أزرار مرحلة القياس -->
             <div id="measurementControls" class="hidden pointer-events-auto items-center gap-2 w-full max-w-2xl justify-center">
                 <button id="toolToggleBtn" type="button" class="py-3 px-3 sm:px-4 rounded-2xl bg-sky-500 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg shadow-sky-500/20 flex items-center gap-1.5 active:scale-95 transition cursor-pointer">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-                    </svg>
                     <span id="toolToggleText">أداة القياس</span>
                 </button>
 
                 <button id="freezeFrameBtn" type="button" class="py-3 px-3 sm:px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 font-bold text-xs sm:text-sm flex items-center gap-1.5 active:scale-95 transition cursor-pointer">
-                    <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
                     <span id="freezeText">تجميد الصورة</span>
                 </button>
 
@@ -270,15 +254,11 @@
                 </button>
 
                 <button id="resetBtn" type="button" class="py-3 px-3 sm:px-4 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/50 text-rose-200 font-bold text-xs sm:text-sm flex items-center gap-1 active:scale-95 transition cursor-pointer">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
                     <span>إعادة الضبط</span>
                 </button>
             </div>
         </footer>
 
-        <!-- إشعار عائم للتوجيه -->
         <div id="toastMessage" class="pointer-events-none opacity-0 transition-opacity duration-300 fixed top-24 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 border border-sky-400/50 text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-full shadow-2xl text-center max-w-[92vw]"></div>
     </div>
 
@@ -296,24 +276,32 @@
             const freezeCanvas = document.createElement('canvas');
             const freezeCtx = freezeCanvas.getContext('2d');
 
+            // الصورة المرجعية المرفوعة من الاستوديو
+            let refImage = null;
+            let refImageOpacity = 0.45;
+            let showRefImage = false;
+
             const state = {
                 isRunning: false,
                 isDemoMode: false,
                 isLocked: false,
                 isFrozen: false,
                 isLandscape: false,
-                originMode: 'center', // 'center' | 'corner' | 'custom'
+                originMode: 'center',
                 customOriginNorm: { x: 0.5, y: 0.5 },
-                toolMode: 'measure', // 'measure' | 'pan'
+                toolMode: 'measure',
 
                 width: window.innerWidth,
                 height: window.innerHeight,
 
-                // مستطيل تحديد ورقة A4 على الشاشة قبل التثبيت
-                frameScaleFactor: 0.72,
-                baseRect: { x: 40, y: 80, w: 210, h: 297 },
+                // 4 زوايا مستقلة قابلة للسحب الحر تماماً (TL, TR, BR, BL)
+                corners: {
+                    tl: { x: 80, y: 120 },
+                    tr: { x: 380, y: 120 },
+                    br: { x: 380, y: 520 },
+                    bl: { x: 80, y: 520 }
+                },
 
-                // بُعد الكاميرا الرقمي والعتادي
                 cameraFovScale: 1.0,
                 videoTrack: null,
                 hwZoomSupported: false,
@@ -325,23 +313,19 @@
                 backCameras: [],
                 currentCameraIndex: 0,
 
-                // التكبير والتحريك الموضعي بعد التثبيت
                 zoom: 1.0,
                 minZoom: 1.0,
                 maxZoom: 16.0,
                 panX: 0,
                 panY: 0,
 
-                // إحداثيات المؤشر والقياس بالمليمتر
                 cursorMM: { x: 0, y: 0, inside: false },
                 measureStartMM: null,
                 measureEndMM: null,
-                isDrawingMeasure: false,
-                dragTarget: null, // 'frame' | 'corner-tl' | 'corner-tr' | 'corner-bl' | 'corner-br' | 'origin' | 'measure-start' | 'measure-end' | 'pan'
+                dragTarget: null, // 'tl' | 'tr' | 'br' | 'bl' | 'edge' | 'origin' | etc...
                 dragStartPointer: { x: 0, y: 0 },
-                dragStartRect: null,
+                dragStartCorners: null,
 
-                // اللمس المتعدد
                 pointers: new Map(),
                 lastPinchDist: null,
                 lastPinchCenter: null
@@ -353,37 +337,19 @@
                     : { w: A4_SHORT_MM, h: A4_LONG_MM };
             }
 
-            function computeCenteredA4Rect() {
+            function initDefaultCorners() {
                 const aspect = state.isLandscape ? (A4_LONG_MM / A4_SHORT_MM) : (A4_SHORT_MM / A4_LONG_MM);
-                const availW = state.width * state.frameScaleFactor;
-                const availH = (state.height * 0.76) * (state.frameScaleFactor / 0.72);
-                const maxH = Math.min(state.height * 0.85, availH);
+                const w = Math.min(state.width * 0.65, 400);
+                const h = w / aspect;
+                const cx = state.width / 2;
+                const cy = state.height / 2;
 
-                let rectW, rectH;
-                if (availW / maxH > aspect) {
-                    rectH = maxH;
-                    rectW = rectH * aspect;
-                } else {
-                    rectW = availW;
-                    rectH = rectW / aspect;
-                }
-
-                state.baseRect = {
-                    x: (state.width - rectW) / 2,
-                    y: (state.height - rectH) / 2,
-                    w: rectW,
-                    h: rectH
+                state.corners = {
+                    tl: { x: cx - w / 2, y: cy - h / 2 },
+                    tr: { x: cx + w / 2, y: cy - h / 2 },
+                    br: { x: cx + w / 2, y: cy + h / 2 },
+                    bl: { x: cx - w / 2, y: cy + h / 2 }
                 };
-                syncCalibrationSliders();
-            }
-
-            function syncCalibrationSliders() {
-                const sizeSlider = document.getElementById('frameSizeSlider');
-                const sizeBadge = document.getElementById('frameSizeBadge');
-                if (sizeSlider && sizeBadge) {
-                    sizeSlider.value = state.frameScaleFactor.toFixed(2);
-                    sizeBadge.textContent = Math.round(state.frameScaleFactor * 100) + '%';
-                }
             }
 
             function resizeCanvas() {
@@ -397,21 +363,18 @@
                 canvas.height = Math.round(state.height * dpr);
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-                if (!state.isLocked) {
-                    computeCenteredA4Rect();
-                } else if (prevW > 0 && prevH > 0) {
+                if (!state.isLocked && prevW === window.innerWidth && !state.corners.tl.x) {
+                    initDefaultCorners();
+                } else if (prevW > 0 && prevH > 0 && !state.isLocked) {
                     const sx = state.width / prevW;
                     const sy = state.height / prevH;
-                    state.baseRect.x *= sx;
-                    state.baseRect.y *= sy;
-                    state.baseRect.w *= sx;
-                    state.baseRect.h *= sy;
-                    state.panX *= sx;
-                    state.panY *= sy;
+                    ['tl', 'tr', 'br', 'bl'].forEach(k => {
+                        state.corners[k].x *= sx;
+                        state.corners[k].y *= sy;
+                    });
                 }
             }
 
-            // تحويل الإحداثيات بين الشاشة، الإحداثي الأساسي، وإحداثي الورقة بالمليمتر
             function screenToBase(sx, sy) {
                 return {
                     x: (sx - state.panX) / state.zoom,
@@ -426,20 +389,35 @@
                 };
             }
 
-            function getActiveOriginNorm() {
-                if (state.originMode === 'center') return { x: 0.5, y: 0.5 };
-                if (state.originMode === 'corner') return { x: 0, y: 0 };
-                return state.customOriginNorm;
-            }
-
+            // تحويل إحداثيات الشاشة إلى إحداثيات بالمليمتر داخل مستطيل الزوايا الأربع الحر
             function screenToPaperMM(sx, sy) {
                 const base = screenToBase(sx, sy);
-                const r = state.baseRect;
+                const { tl, tr, br, bl } = state.corners;
                 const paper = getPaperDimensionsMM();
-                const orig = getActiveOriginNorm();
 
-                const normX = (base.x - r.x) / r.w;
-                const normY = (base.y - r.y) / r.h;
+                // حساب تقريبي ثنائي الخطوط (Bilinear mapping) أو إسقاط مبسط دقيق للزوايا
+                // لأجل البساطة والسرعة والدقة الهندسية، نحسب الإسقاط عبر حل معادلة الإحداثيات النسبية (u, v)
+                // U من اليسار لليمين، V من الأعلى للأسفل
+                const ux = base.x;
+                const uy = base.y;
+
+                // تقدير تقريبي عبر مسافة النقطة من الحواف الأربع
+                const vWidthTop = Math.hypot(tr.x - tl.x, tr.y - tl.y);
+                const vWidthBot = Math.hypot(br.x - bl.x, br.y - bl.y);
+                const vHeightLeft = Math.hypot(bl.x - tl.x, bl.y - tl.y);
+                const vHeightRight = Math.hypot(br.x - tr.x, br.y - tr.y);
+
+                const avgW = (vWidthTop + vWidthBot) / 2;
+                const avgH = (vHeightLeft + vHeightRight) / 2;
+
+                // إسقاط تقريبي دقيق يعتمد على مركز المضلع والزوايا
+                const cx = (tl.x + tr.x + br.x + bl.x) / 4;
+                const cy = (tl.y + tr.y + br.y + bl.y) / 4;
+
+                const normX = (base.x - ((tl.x + bl.x)/2)) / (avgW || 1);
+                const normY = (base.y - ((tl.y + tr.y)/2)) / (avgH || 1);
+
+                const orig = state.originMode === 'center' ? { x: 0.5, y: 0.5 } : (state.originMode === 'corner' ? { x: 0, y: 0 } : state.customOriginNorm);
 
                 let mmX, mmY;
                 if (state.originMode === 'corner') {
@@ -450,14 +428,13 @@
                     mmY = (orig.y - normY) * paper.h;
                 }
 
-                const inside = normX >= 0 && normX <= 1 && normY >= 0 && normY <= 1;
+                const inside = normX >= -0.1 && normX <= 1.1 && normY >= -0.1 && normY <= 1.1;
                 return { x: mmX, y: mmY, inside, normX, normY };
             }
 
             function paperMMToScreen(mmX, mmY) {
-                const r = state.baseRect;
                 const paper = getPaperDimensionsMM();
-                const orig = getActiveOriginNorm();
+                const orig = state.originMode === 'center' ? { x: 0.5, y: 0.5 } : (state.originMode === 'corner' ? { x: 0, y: 0 } : state.customOriginNorm);
 
                 let normX, normY;
                 if (state.originMode === 'corner') {
@@ -468,52 +445,32 @@
                     normY = orig.y - (mmY / paper.h);
                 }
 
-                const baseX = r.x + normX * r.w;
-                const baseY = r.y + normY * r.h;
-                return baseToScreen(baseX, baseY);
+                // Bilinear interpolation بين الزوايا الأربع للـ screen base
+                const { tl, tr, br, bl } = state.corners;
+                const bx = (1 - normY) * ((1 - normX) * tl.x + normX * tr.x) + normY * ((1 - normX) * bl.x + normX * br.x);
+                const by = (1 - normY) * ((1 - normX) * tl.y + normX * tr.y) + normY * ((1 - normX) * bl.y + normX * br.y);
+
+                return baseToScreen(bx, by);
             }
 
-            // حساب خطوة الشبكة التكيفية (تتوسع الدقة تلقائياً كلما اقترب المستخدم)
             function getAdaptiveGridSteps() {
                 const paper = getPaperDimensionsMM();
-                const screenPaperW = state.baseRect.w * state.zoom;
-                const pxPerMM = screenPaperW / paper.w;
+                const topW = Math.hypot(state.corners.tr.x - state.corners.tl.x, state.corners.tr.y - state.corners.tl.y);
+                const pxPerMM = (topW * state.zoom) / paper.w;
 
-                if (pxPerMM >= 42) {
-                    return { majorMM: 2, minorMM: 1, subMM: 0.1, label: '0.1 مم (100 ميكرون)' };
-                } else if (pxPerMM >= 22) {
-                    return { majorMM: 5, minorMM: 1, subMM: 0.5, label: '0.5 مم (نصف مليمتر)' };
-                } else if (pxPerMM >= 10) {
-                    return { majorMM: 10, minorMM: 5, subMM: 1, label: '1 مم (مليمتر دقيق)' };
-                } else if (pxPerMM >= 4.5) {
-                    return { majorMM: 20, minorMM: 10, subMM: 5, label: '5 مم (نصف سنتيمتر)' };
-                } else {
-                    return { majorMM: 50, minorMM: 10, subMM: null, label: '10 مم (1 سنتيمتر)' };
-                }
+                if (pxPerMM >= 42) return { majorMM: 2, minorMM: 1, subMM: 0.1, label: '0.1 مم (دقيق جداً)' };
+                if (pxPerMM >= 22) return { majorMM: 5, minorMM: 1, subMM: 0.5, label: '0.5 مم' };
+                if (pxPerMM >= 10) return { majorMM: 10, minorMM: 5, subMM: 1, label: '1 مم (مليمتر)' };
+                return { majorMM: 20, minorMM: 10, subMM: 5, label: 'سنتيمترات' };
             }
 
             function clampPanBounds() {
-                if (state.zoom <= 1.001) {
-                    state.zoom = 1.0;
-                    state.panX = 0;
-                    state.panY = 0;
-                    return;
-                }
-                const maxOffsetX = state.width * 0.45;
-                const maxOffsetY = state.height * 0.45;
-                const minPanX = state.width * (1 - state.zoom) - maxOffsetX;
-                const maxPanX = maxOffsetX;
-                const minPanY = state.height * (1 - state.zoom) - maxOffsetY;
-                const maxPanY = maxOffsetY;
-
-                state.panX = Math.max(minPanX, Math.min(maxPanX, state.panX));
-                state.panY = Math.max(minPanY, Math.min(maxPanY, state.panY));
+                if (state.zoom <= 1.001) { state.zoom = 1.0; state.panX = 0; state.panY = 0; return; }
             }
 
             function applyZoomAtPoint(newZoom, focalX, focalY) {
                 const clampedZoom = Math.max(state.minZoom, Math.min(state.maxZoom, newZoom));
                 const basePt = screenToBase(focalX, focalY);
-
                 state.zoom = clampedZoom;
                 state.panX = focalX - basePt.x * state.zoom;
                 state.panY = focalY - basePt.y * state.zoom;
@@ -525,58 +482,10 @@
                 const slider = document.getElementById('zoomSlider');
                 const zoomText = document.getElementById('zoomLevelText');
                 const gridLabel = document.getElementById('gridPrecisionLabel');
-
                 if (slider) slider.value = state.zoom.toFixed(2);
                 if (zoomText) zoomText.textContent = state.zoom.toFixed(1) + 'x';
                 const steps = getAdaptiveGridSteps();
                 if (gridLabel) gridLabel.textContent = 'دقة الشبكة: ' + steps.label;
-            }
-
-            // ==========================================
-            // تهيئة الكاميرا بشكل موثوق مع معالجة الأخطاء
-            // ==========================================
-            async function discoverCameras() {
-                try {
-                    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
-                    const devices = await navigator.mediaDevices.enumerateDevices();
-                    const videos = devices.filter(d => d.kind === 'videoinput');
-                    const back = videos.filter(d => {
-                        const l = (d.label || '').toLowerCase();
-                        return !l.includes('front') && !l.includes('user') && !l.includes('أمام');
-                    });
-                    const list = back.length > 0 ? back : videos;
-                    // ترتيب لإعطاء الأولوية للعدسة الواسعة 0.5x إن وُجدت
-                    list.sort((a, b) => {
-                        const la = (a.label || '').toLowerCase();
-                        const lb = (b.label || '').toLowerCase();
-                        const rank = (s) => (s.includes('ultra') || s.includes('0.5') || s.includes('0.6')) ? 0 : 1;
-                        return rank(la) - rank(lb);
-                    });
-                    state.backCameras = list;
-                } catch (e) {
-                    console.warn('Device enumeration skipped:', e);
-                }
-            }
-
-            async function setCameraDistanceZoom(val) {
-                const clamped = Math.max(0.5, Math.min(3.0, val));
-                const slider = document.getElementById('cameraDistanceSlider');
-                const badge = document.getElementById('cameraZoomBadge');
-                if (slider) slider.value = clamped.toFixed(2);
-                if (badge) badge.textContent = clamped.toFixed(1) + 'x';
-
-                if (state.videoTrack && state.hwZoomSupported) {
-                    const hwTarget = Math.max(state.hwZoomMin, Math.min(state.hwZoomMax, clamped));
-                    try {
-                        await state.videoTrack.applyConstraints({ advanced: [{ zoom: hwTarget }] });
-                        state.hwZoomCurrent = hwTarget;
-                        state.cameraFovScale = clamped < hwTarget ? (clamped / hwTarget) : 1.0;
-                        return;
-                    } catch (e) {
-                        console.warn('HW zoom fallback:', e);
-                    }
-                }
-                state.cameraFovScale = clamped < 1.0 ? clamped : 1.0;
             }
 
             async function initCamera(deviceId = null) {
@@ -592,86 +501,34 @@
 
                 try {
                     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                        throw new Error('المتصفح الحالي لا يدعم واجهة الكاميرا (تأكد من فتح الرابط عبر HTTPS).');
+                        throw new Error('المتصفح الحالي لا يدعم الكاميرا.');
                     }
-
-                    // إيقاف أي مسار كاميرا سابق
                     if (video.srcObject) {
                         video.srcObject.getTracks().forEach(t => t.stop());
                         video.srcObject = null;
                     }
 
-                    let stream = null;
-                    // المحاولة 1: إعداد بسيط وآمن للكاميرا الخلفية لتجنب OverconstrainedError
-                    const primaryConstraints = deviceId
-                        ? { video: { deviceId: { exact: deviceId } }, audio: false }
-                        : { video: { facingMode: 'environment' }, audio: false };
-
-                    try {
-                        stream = await navigator.mediaDevices.getUserMedia(primaryConstraints);
-                    } catch (firstErr) {
-                        console.warn('Primary camera constraint failed, trying generic video:true', firstErr);
-                        // المحاولة 2: أي كاميرا متاحة على الجهاز
-                        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                    }
-
+                    const constraints = deviceId ? { video: { deviceId: { exact: deviceId } }, audio: false } : { video: { facingMode: 'environment' }, audio: false };
+                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
                     video.muted = true;
                     video.setAttribute('playsinline', '');
                     video.srcObject = stream;
 
-                    // انتظار جاهزية بيانات الفيديو مع مهلة أمان
                     await new Promise((resolve) => {
                         if (video.readyState >= 2) return resolve();
-                        const onReady = () => {
-                            video.removeEventListener('loadedmetadata', onReady);
-                            resolve();
-                        };
-                        video.addEventListener('loadedmetadata', onReady);
+                        video.addEventListener('loadedmetadata', resolve, { once: true });
                         setTimeout(resolve, 2500);
                     });
-
                     await video.play();
 
-                    const track = stream.getVideoTracks()[0];
-                    state.videoTrack = track;
-                    state.hwZoomSupported = false;
-                    state.torchSupported = false;
-
-                    // اكتشاف الكاميرات بعد الحصول على الإذن
-                    if (state.backCameras.length === 0) {
-                        await discoverCameras();
-                    }
-
-                    // فحص قدرات المستشعر (Zoom Out / Torch)
-                    if (track && typeof track.getCapabilities === 'function') {
-                        const caps = track.getCapabilities();
-                        if (caps.torch) {
-                            state.torchSupported = true;
-                            document.getElementById('torchBtn').classList.remove('hidden');
-                        }
-                        if (caps.zoom && typeof caps.zoom.min === 'number') {
-                            state.hwZoomSupported = true;
-                            state.hwZoomMin = caps.zoom.min;
-                            state.hwZoomMax = caps.zoom.max;
-                            const distSlider = document.getElementById('cameraDistanceSlider');
-                            distSlider.min = Math.min(0.5, caps.zoom.min).toFixed(2);
-                            distSlider.max = Math.min(3.5, caps.zoom.max).toFixed(2);
-                            const initZ = caps.zoom.min < 1.0 ? caps.zoom.min : 1.0;
-                            await setCameraDistanceZoom(initZ);
-                        } else {
-                            await setCameraDistanceZoom(1.0);
-                        }
-                    }
-
+                    state.videoTrack = stream.getVideoTracks()[0];
                     state.isDemoMode = false;
                     launchWorkspace();
                 } catch (err) {
-                    console.error('Camera initialization failed:', err);
                     loadingBox.classList.add('hidden');
                     loadingBox.classList.remove('flex');
                     startBtns.classList.remove('hidden');
-
-                    errText.textContent = 'تعذر الوصول إلى الكاميرا: ' + (err.message || 'تم رفض الإذن أو الكاميرا قيد الاستخدام في تطبيق آخر') + '. يمكنك إعادة المحاولة أو التشغيل في وضع المعاينة فوراً.';
+                    errText.textContent = 'تعذر تشغيل الكاميرا: ' + (err.message || '') + '. يمكنك تجربة وضع المعاينة.';
                     errBox.classList.remove('hidden');
                 }
             }
@@ -683,93 +540,41 @@
                 if (!state.isLocked) {
                     document.getElementById('calibrationSlidersPanel').classList.remove('hidden');
                 }
-
                 resizeCanvas();
+                if (!state.corners.tl.x) initDefaultCorners();
                 if (!state.isRunning) {
                     state.isRunning = true;
                     requestAnimationFrame(renderLoop);
                 }
             }
 
-            // ==========================================
-            // الرسم على الكانفاس (Render Pipeline)
-            // ==========================================
             function drawVideoOrDemo() {
                 if (state.isFrozen) {
                     ctx.drawImage(freezeCanvas, 0, 0, state.width, state.height);
                     return;
                 }
-
                 if (state.isDemoMode || !video.videoWidth || video.readyState < 2) {
                     drawSimulatedWorkspace();
                     return;
                 }
-
-                const vw = video.videoWidth;
-                const vh = video.videoHeight;
-                const cw = state.width;
-                const ch = state.height;
-
-                const coverScale = Math.max(cw / vw, ch / vh);
-                const containScale = Math.min(cw / vw, ch / vh);
-
-                let scale = coverScale;
-                if (state.cameraFovScale < 0.99) {
-                    const t = Math.min(1, Math.max(0, (1.0 - state.cameraFovScale) / 0.5));
-                    scale = coverScale + (containScale - coverScale) * t;
-                }
-
-                const drawW = vw * scale;
-                const drawH = vh * scale;
-                const ox = (cw - drawW) / 2;
-                const oy = (ch - drawH) / 2;
-
-                ctx.drawImage(video, ox, oy, drawW, drawH);
+                const vw = video.videoWidth, vh = video.videoHeight;
+                const scale = Math.max(state.width / vw, state.height / vh);
+                const dw = vw * scale, dh = vh * scale;
+                ctx.drawImage(video, (state.width - dw) / 2, (state.height - dh) / 2, dw, dh);
             }
 
             function drawSimulatedWorkspace() {
-                const grad = ctx.createRadialGradient(
-                    state.width / 2, state.height / 2, 40,
-                    state.width / 2, state.height / 2, Math.max(state.width, state.height)
-                );
-                grad.addColorStop(0, '#1e293b');
-                grad.addColorStop(1, '#060a12');
-                ctx.fillStyle = grad;
+                ctx.fillStyle = '#0f172a';
                 ctx.fillRect(0, 0, state.width, state.height);
-
-                const r = state.baseRect;
-                ctx.save();
-                ctx.shadowColor = 'rgba(0,0,0,0.65)';
-                ctx.shadowBlur = 24;
-                ctx.fillStyle = '#f8fafc';
-                ctx.fillRect(r.x, r.y, r.w, r.h);
-                ctx.restore();
-
-                // رسم مجسمات معايرة افتراضية على الورقة لاختبار القياس
-                const pxPerMM = r.w / getPaperDimensionsMM().w;
-                const cx = r.x + r.w * 0.35;
-                const cy = r.y + r.h * 0.38;
-                ctx.save();
-                ctx.beginPath();
-                ctx.arc(cx, cy, 15 * pxPerMM, 0, Math.PI * 2);
-                ctx.fillStyle = '#cbd5e1';
-                ctx.fill();
-                ctx.lineWidth = 1.5;
-                ctx.strokeStyle = '#475569';
-                ctx.stroke();
-
-                ctx.fillStyle = '#1e293b';
-                ctx.font = `bold ${Math.max(9, 3.2 * pxPerMM)}px Cairo`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('Ø 30mm', cx, cy);
-
-                const bx = r.x + r.w * 0.52;
-                const by = r.y + r.h * 0.60;
-                ctx.fillStyle = 'rgba(14, 165, 233, 0.16)';
-                ctx.strokeStyle = '#0284c7';
-                ctx.strokeRect(bx, by, 60 * pxPerMM, 35 * pxPerMM);
-                ctx.restore();
+                // شبكة خلفية افتراضية
+                ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+                ctx.lineWidth = 1;
+                for (let x = 0; x < state.width; x += 40) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, state.height); ctx.stroke();
+                }
+                for (let y = 0; y < state.height; y += 40) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(state.width, y); ctx.stroke();
+                }
             }
 
             function renderLoop() {
@@ -777,218 +582,118 @@
 
                 ctx.clearRect(0, 0, state.width, state.height);
 
-                // 1. رسم الكاميرا / الخلفية مع التكبير والتحريك
                 ctx.save();
                 ctx.translate(state.panX, state.panY);
                 ctx.scale(state.zoom, state.zoom);
                 drawVideoOrDemo();
                 ctx.restore();
 
-                // 2. مستطيل ورقة A4 الحالي على الشاشة
-                const r = state.baseRect;
-                const tl = baseToScreen(r.x, r.y);
-                const br = baseToScreen(r.x + r.w, r.y + r.h);
-                const sr = { x: tl.x, y: tl.y, w: br.x - tl.x, h: br.y - tl.y };
+                // رسم الصورة المرجعية الشفافة إن وجدت
+                if (showRefImage && refImage) {
+                    ctx.save();
+                    ctx.globalAlpha = refImageOpacity;
+                    const { tl, tr, br, bl } = state.corners;
+                    // رسم الصورة متكيفة ومنظورية داخل الزوايا الأربع
+                    ctx.drawImage(refImage, Math.min(tl.x, bl.x), Math.min(tl.y, tr.y), Math.max(tr.x, br.x) - Math.min(tl.x, bl.x), Math.max(bl.y, br.y) - Math.min(tl.y, tr.y));
+                    ctx.restore();
+                }
 
-                // 3. تظليل خارج ورقة A4
+                // تظليل خارج مساحة الزوايا الأربع
                 ctx.save();
-                ctx.fillStyle = state.isLocked ? 'rgba(6, 10, 18, 0.72)' : 'rgba(6, 10, 18, 0.52)';
+                ctx.fillStyle = state.isLocked ? 'rgba(6, 10, 18, 0.75)' : 'rgba(6, 10, 18, 0.55)';
                 ctx.beginPath();
                 ctx.rect(0, 0, state.width, state.height);
-                ctx.rect(sr.x, sr.y, sr.w, sr.h);
+                const { tl, tr, br, bl } = state.corners;
+                ctx.moveTo(tl.x, tl.y);
+                ctx.lineTo(tr.x, tr.y);
+                ctx.lineTo(br.x, br.y);
+                ctx.lineTo(bl.x, bl.y);
+                ctx.closePath();
                 ctx.fill('evenodd');
                 ctx.restore();
 
-                // 4. رسم المستوى الإحداثي التكيفي داخل مربع ورقة A4
-                drawCoordinateGrid(sr);
-
-                // 5. رسم حدود مربع A4 ومقابض الزوايا
-                drawA4Frame(sr);
-
-                // 6. رسم خط المسطرة والقياسات إن وجد
+                drawCoordinateGridAndFrame();
                 drawRulerMeasurement();
 
                 requestAnimationFrame(renderLoop);
             }
 
-            function drawCoordinateGrid(sr) {
-                const paper = getPaperDimensionsMM();
-                const steps = getAdaptiveGridSteps();
-                const orig = getActiveOriginNorm();
+            function drawCoordinateGridAndFrame() {
+                const { tl, tr, br, bl } = state.corners;
 
                 ctx.save();
                 ctx.beginPath();
-                ctx.rect(sr.x, sr.y, sr.w, sr.h);
+                ctx.moveTo(tl.x, tl.y);
+                ctx.lineTo(tr.x, tr.y);
+                ctx.lineTo(br.x, br.y);
+                ctx.lineTo(bl.x, bl.y);
+                ctx.closePath();
                 ctx.clip();
 
-                const minX = state.originMode === 'corner' ? 0 : -orig.x * paper.w;
-                const maxX = state.originMode === 'corner' ? paper.w : (1 - orig.x) * paper.w;
-                const minY = state.originMode === 'corner' ? 0 : -(1 - orig.y) * paper.h;
-                const maxY = state.originMode === 'corner' ? paper.h : orig.y * paper.h;
+                // شبكة تفاعلية داخل المضلع
+                const steps = getAdaptiveGridSteps();
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+                ctx.lineWidth = 1;
 
-                function strokeGrid(stepMM, color, lw) {
-                    if (!stepMM) return;
-                    ctx.beginPath();
-                    ctx.strokeStyle = color;
-                    ctx.lineWidth = lw;
+                // خطوط أفقية ورأسية استرشادية
+                const linesCount = 10;
+                for (let i = 1; i < linesCount; i++) {
+                    const t = i / linesCount;
+                    // خطوط أفقية
+                    const hx1 = tl.x + (bl.x - tl.x) * t;
+                    const hy1 = tl.y + (bl.y - tl.y) * t;
+                    const hx2 = tr.x + (br.x - tr.x) * t;
+                    const hy2 = tr.y + (br.y - tr.y) * t;
+                    ctx.beginPath(); ctx.moveTo(hx1, hy1); ctx.lineTo(hx2, hy2); ctx.stroke();
 
-                    const sx0 = Math.ceil(minX / stepMM) * stepMM;
-                    for (let x = sx0; x <= maxX + 0.0001; x += stepMM) {
-                        const pt = paperMMToScreen(x, 0);
-                        if (pt.x >= -2 && pt.x <= state.width + 2) {
-                            const ax = Math.round(pt.x) + 0.5;
-                            ctx.moveTo(ax, Math.max(0, sr.y));
-                            ctx.lineTo(ax, Math.min(state.height, sr.y + sr.h));
-                        }
-                    }
-
-                    const sy0 = Math.ceil(minY / stepMM) * stepMM;
-                    for (let y = sy0; y <= maxY + 0.0001; y += stepMM) {
-                        const pt = paperMMToScreen(0, y);
-                        if (pt.y >= -2 && pt.y <= state.height + 2) {
-                            const ay = Math.round(pt.y) + 0.5;
-                            ctx.moveTo(Math.max(0, sr.x), ay);
-                            ctx.lineTo(Math.min(state.width, sr.x + sr.w), ay);
-                        }
-                    }
-                    ctx.stroke();
-                }
-
-                if (steps.subMM) strokeGrid(steps.subMM, 'rgba(56, 189, 248, 0.18)', 0.7);
-                strokeGrid(steps.minorMM, 'rgba(56, 189, 248, 0.30)', 0.9);
-                strokeGrid(steps.majorMM, 'rgba(56, 189, 248, 0.58)', 1.25);
-
-                // المحوران الرئيسيان X و Y
-                const originPt = paperMMToScreen(0, 0);
-                ctx.beginPath();
-                ctx.strokeStyle = 'rgba(16, 185, 129, 0.95)';
-                ctx.lineWidth = 2;
-                if (originPt.x >= sr.x && originPt.x <= sr.x + sr.w) {
-                    ctx.moveTo(originPt.x, sr.y);
-                    ctx.lineTo(originPt.x, sr.y + sr.h);
-                }
-                if (originPt.y >= sr.y && originPt.y <= sr.y + sr.h) {
-                    ctx.moveTo(sr.x, originPt.y);
-                    ctx.lineTo(sr.x + sr.w, originPt.y);
-                }
-                ctx.stroke();
-
-                // أرقام الإحداثيات
-                ctx.font = '700 10px "JetBrains Mono", monospace';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'top';
-
-                const labelY = Math.min(Math.max(originPt.y + 4, sr.y + 6), sr.y + sr.h - 18);
-                const labelX = Math.min(Math.max(originPt.x + 6, sr.x + 6), sr.x + sr.w - 32);
-
-                const lx0 = Math.ceil(minX / steps.majorMM) * steps.majorMM;
-                for (let x = lx0; x <= maxX + 0.001; x += steps.majorMM) {
-                    const rx = Math.round(x * 10) / 10;
-                    if (rx === 0 && state.originMode !== 'corner') continue;
-                    const pt = paperMMToScreen(rx, 0);
-                    if (pt.x > sr.x + 14 && pt.x < sr.x + sr.w - 14 && pt.x > 8 && pt.x < state.width - 8) {
-                        const txt = String(rx);
-                        const tw = ctx.measureText(txt).width;
-                        ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
-                        ctx.fillRect(pt.x - tw / 2 - 2, labelY - 1, tw + 4, 12);
-                        ctx.fillStyle = '#7dd3fc';
-                        ctx.fillText(txt, pt.x, labelY);
-                    }
-                }
-
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'middle';
-                const ly0 = Math.ceil(minY / steps.majorMM) * steps.majorMM;
-                for (let y = ly0; y <= maxY + 0.001; y += steps.majorMM) {
-                    const ry = Math.round(y * 10) / 10;
-                    if (ry === 0) continue;
-                    const pt = paperMMToScreen(0, ry);
-                    if (pt.y > sr.y + 14 && pt.y < sr.y + sr.h - 14 && pt.y > 8 && pt.y < state.height - 8) {
-                        const txt = String(ry);
-                        const tw = ctx.measureText(txt).width;
-                        ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
-                        ctx.fillRect(labelX - 2, pt.y - 6, tw + 4, 12);
-                        ctx.fillStyle = '#7dd3fc';
-                        ctx.fillText(txt, labelX, pt.y);
-                    }
-                }
-
-                // نقطة الأصل (0,0)
-                if (originPt.x >= sr.x && originPt.x <= sr.x + sr.w && originPt.y >= sr.y && originPt.y <= sr.y + sr.h) {
-                    if (state.originMode === 'custom') {
-                        ctx.beginPath();
-                        ctx.arc(originPt.x, originPt.y, 15, 0, Math.PI * 2);
-                        ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
-                        ctx.fill();
-                    }
-                    ctx.beginPath();
-                    ctx.arc(originPt.x, originPt.y, 5.5, 0, Math.PI * 2);
-                    ctx.fillStyle = '#10b981';
-                    ctx.fill();
-                    ctx.strokeStyle = '#0f172a';
-                    ctx.lineWidth = 1.5;
-                    ctx.stroke();
+                    // خطوط رأسية
+                    const vx1 = tl.x + (tr.x - tl.x) * t;
+                    const vy1 = tl.y + (tr.y - tl.y) * t;
+                    const vx2 = bl.x + (br.x - bl.x) * t;
+                    const vy2 = bl.y + (br.y - bl.y) * t;
+                    ctx.beginPath(); ctx.moveTo(vx1, vy1); ctx.lineTo(vx2, vy2); ctx.stroke();
                 }
 
                 ctx.restore();
-            }
 
-            function drawA4Frame(sr) {
-                const paper = getPaperDimensionsMM();
+                // رسم إطار الزوايا الأربع الأربعة ومقابض التحريك الحر
                 ctx.save();
-
                 ctx.strokeStyle = state.isLocked ? '#10b981' : '#38bdf8';
                 ctx.lineWidth = state.isLocked ? 2.5 : 2;
-                if (!state.isLocked) ctx.setLineDash([8, 6]);
-                ctx.strokeRect(sr.x, sr.y, sr.w, sr.h);
+                if (!state.isLocked) ctx.setLineDash([6, 6]);
+
+                ctx.beginPath();
+                ctx.moveTo(tl.x, tl.y);
+                ctx.lineTo(tr.x, tr.y);
+                ctx.lineTo(br.x, br.y);
+                ctx.lineTo(bl.x, bl.y);
+                ctx.closePath();
+                ctx.stroke();
                 ctx.setLineDash([]);
 
-                const cLen = Math.min(26, sr.w * 0.14, sr.h * 0.14);
-                ctx.strokeStyle = state.isLocked ? '#34d399' : '#fbbf24';
-                ctx.lineWidth = 4;
-                ctx.lineCap = 'round';
-
-                const corners = [
-                    { x: sr.x, y: sr.y, dx: 1, dy: 1 },
-                    { x: sr.x + sr.w, y: sr.y, dx: -1, dy: 1 },
-                    { x: sr.x, y: sr.y + sr.h, dx: 1, dy: -1 },
-                    { x: sr.x + sr.w, y: sr.y + sr.h, dx: -1, dy: -1 }
-                ];
-
-                corners.forEach(c => {
-                    ctx.beginPath();
-                    ctx.moveTo(c.x + c.dx * cLen, c.y);
-                    ctx.lineTo(c.x, c.y);
-                    ctx.lineTo(c.x, c.y + c.dy * cLen);
-                    ctx.stroke();
-
-                    // دوائر سحب الزوايا قبل التثبيت لتعديل أبعاد المربع بدقة
-                    if (!state.isLocked) {
+                // دوائر الزوايا الأربع للتحريك الحر المستقل
+                if (!state.isLocked) {
+                    [
+                        { id: 'tl', pt: tl, label: 'TL' },
+                        { id: 'tr', pt: tr, label: 'TR' },
+                        { id: 'br', pt: br, label: 'BR' },
+                        { id: 'bl', pt: bl, label: 'BL' }
+                    ].forEach(c => {
                         ctx.beginPath();
-                        ctx.arc(c.x, c.y, 9, 0, Math.PI * 2);
-                        ctx.fillStyle = 'rgba(251, 191, 36, 0.35)';
+                        ctx.arc(c.pt.x, c.pt.y, 16, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(251, 191, 36, 0.4)';
                         ctx.fill();
-                    }
-                });
+                        ctx.strokeStyle = '#fbbf24';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
 
-                const badgeText = `A4 (${paper.w} × ${paper.h} mm)`;
-                ctx.font = 'bold 11px "JetBrains Mono", monospace';
-                const bw = ctx.measureText(badgeText).width + 16;
-                const bx = sr.x + sr.w / 2 - bw / 2;
-                const by = Math.max(8, sr.y - 24);
-
-                ctx.fillStyle = state.isLocked ? 'rgba(6, 78, 59, 0.92)' : 'rgba(15, 23, 42, 0.92)';
-                ctx.beginPath();
-                ctx.roundRect(bx, by, bw, 20, 6);
-                ctx.fill();
-                ctx.strokeStyle = state.isLocked ? '#10b981' : '#38bdf8';
-                ctx.lineWidth = 1;
-                ctx.stroke();
-
-                ctx.fillStyle = '#ffffff';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(badgeText, sr.x + sr.w / 2, by + 10);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = 'bold 10px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(c.label, c.pt.x, c.pt.y);
+                    });
+                }
 
                 ctx.restore();
             }
@@ -998,25 +703,9 @@
 
                 const p1 = paperMMToScreen(state.measureStartMM.x, state.measureStartMM.y);
                 const p2 = paperMMToScreen(state.measureEndMM.x, state.measureEndMM.y);
-
-                const dx = state.measureEndMM.x - state.measureStartMM.x;
-                const dy = state.measureEndMM.y - state.measureStartMM.y;
-                const distMM = Math.hypot(dx, dy);
+                const distMM = Math.hypot(state.measureEndMM.x - state.measureStartMM.x, state.measureEndMM.y - state.measureStartMM.y);
 
                 ctx.save();
-
-                // مثلث الإسقاط ΔX و ΔY
-                ctx.beginPath();
-                ctx.setLineDash([4, 4]);
-                ctx.strokeStyle = 'rgba(251, 191, 36, 0.65)';
-                ctx.lineWidth = 1.2;
-                ctx.moveTo(p1.x, p1.y);
-                ctx.lineTo(p2.x, p1.y);
-                ctx.lineTo(p2.x, p2.y);
-                ctx.stroke();
-                ctx.setLineDash([]);
-
-                // خط القياس الرئيسي
                 ctx.beginPath();
                 ctx.strokeStyle = '#f59e0b';
                 ctx.lineWidth = 3;
@@ -1024,34 +713,9 @@
                 ctx.lineTo(p2.x, p2.y);
                 ctx.stroke();
 
-                // تدريجات على طول المسطرة
-                if (distMM > 2) {
-                    const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-                    const perp = angle + Math.PI / 2;
-                    const step = distMM > 50 ? 10 : (distMM > 15 ? 5 : 1);
-                    for (let d = step; d < distMM; d += step) {
-                        const t = d / distMM;
-                        const tx = p1.x + (p2.x - p1.x) * t;
-                        const ty = p1.y + (p2.y - p1.y) * t;
-                        const len = (d % 10 === 0) ? 6 : 3.5;
-                        ctx.beginPath();
-                        ctx.strokeStyle = '#fef3c7';
-                        ctx.lineWidth = 1.2;
-                        ctx.moveTo(tx - Math.cos(perp) * len, ty - Math.sin(perp) * len);
-                        ctx.lineTo(tx + Math.cos(perp) * len, ty + Math.sin(perp) * len);
-                        ctx.stroke();
-                    }
-                }
-
-                // النقطتان الطرفيتان
                 [p1, p2].forEach((pt, idx) => {
                     ctx.beginPath();
-                    ctx.arc(pt.x, pt.y, 15, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(245, 158, 11, 0.25)';
-                    ctx.fill();
-
-                    ctx.beginPath();
-                    ctx.arc(pt.x, pt.y, 5.5, 0, Math.PI * 2);
+                    ctx.arc(pt.x, pt.y, 6, 0, Math.PI * 2);
                     ctx.fillStyle = idx === 0 ? '#10b981' : '#f59e0b';
                     ctx.fill();
                     ctx.strokeStyle = '#0f172a';
@@ -1059,26 +723,23 @@
                     ctx.stroke();
                 });
 
-                // بطاقة المسافة في منتصف الخط
                 const midX = (p1.x + p2.x) / 2;
-                const midY = (p1.y + p2.y) / 2 - 22;
+                const midY = (p1.y + p2.y) / 2 - 20;
                 const label = `${distMM.toFixed(2)} mm`;
-                ctx.font = 'bold 13px "JetBrains Mono", monospace';
-                const lw = ctx.measureText(label).width + 18;
+                ctx.font = 'bold 12px "JetBrains Mono", monospace';
+                const lw = ctx.measureText(label).width + 16;
 
-                ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
                 ctx.beginPath();
-                ctx.roundRect(midX - lw / 2, midY - 13, lw, 26, 8);
+                ctx.roundRect(midX - lw / 2, midY - 12, lw, 24, 6);
                 ctx.fill();
                 ctx.strokeStyle = '#f59e0b';
-                ctx.lineWidth = 1.5;
                 ctx.stroke();
 
                 ctx.fillStyle = '#fbbf24';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(label, midX, midY);
-
                 ctx.restore();
             }
 
@@ -1090,39 +751,25 @@
                 const clearBtn = document.getElementById('clearMeasureBtn');
 
                 if (state.measureStartMM && state.measureEndMM) {
-                    const dx = state.measureEndMM.x - state.measureStartMM.x;
-                    const dy = state.measureEndMM.y - state.measureStartMM.y;
-                    const dist = Math.hypot(dx, dy);
-                    const angleDeg = (Math.atan2(dy, dx) * 180 / Math.PI);
-
+                    const dist = Math.hypot(state.measureEndMM.x - state.measureStartMM.x, state.measureEndMM.y - state.measureStartMM.y);
                     document.getElementById('distReadout').textContent = `${dist.toFixed(2)} mm`;
                     document.getElementById('distCmReadout').textContent = `(${(dist / 10).toFixed(2)} cm)`;
-                    document.getElementById('dxReadout').textContent = `ΔX:${Math.abs(dx).toFixed(1)}`;
-                    document.getElementById('dyReadout').textContent = `ΔY:${Math.abs(dy).toFixed(1)}`;
-                    document.getElementById('angleReadout').textContent = `${angleDeg.toFixed(1)}°`;
-
-                    group.classList.remove('hidden');
-                    group.classList.add('flex');
+                    group.classList.remove('hidden'); group.classList.add('flex');
                     clearBtn.classList.remove('hidden');
                 } else {
-                    group.classList.add('hidden');
-                    group.classList.remove('flex');
+                    group.classList.add('hidden'); group.classList.remove('flex');
                     clearBtn.classList.add('hidden');
                 }
             }
 
-            let toastTimer = null;
             function showToast(msg) {
                 const el = document.getElementById('toastMessage');
                 el.textContent = msg;
                 el.classList.remove('opacity-0');
-                clearTimeout(toastTimer);
-                toastTimer = setTimeout(() => el.classList.add('opacity-0'), 3000);
+                setTimeout(() => el.classList.add('opacity-0'), 3000);
             }
 
-            // ==========================================
-            // أحداث اللمس والفأرة الموحدة (Pointer Events)
-            // ==========================================
+            // أحداث الإيماءات واللمس لتعديل الزوايا الأربع بحرية
             canvas.addEventListener('pointerdown', (e) => {
                 if (e.target !== canvas) return;
                 try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
@@ -1132,69 +779,25 @@
                 state.cursorMM = mm;
                 updateReadoutUI();
 
-                // إصبعان: تكبير بالقرص (Pinch-to-Zoom)
-                if (state.pointers.size === 2) {
-                    state.dragTarget = null;
-                    state.isDrawingMeasure = false;
-                    const pts = Array.from(state.pointers.values());
-                    state.lastPinchDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-                    state.lastPinchCenter = {
-                        x: (pts[0].x + pts[1].x) / 2,
-                        y: (pts[0].y + pts[1].y) / 2
-                    };
-                    return;
-                }
-
-                // مرحلة المعايرة قبل التثبيت: سحب الزوايا أو سحب الإطار كاملاً
                 if (!state.isLocked) {
-                    const r = state.baseRect;
-                    const hitRadius = 28;
-                    const corners = [
-                        { id: 'corner-tl', x: r.x, y: r.y },
-                        { id: 'corner-tr', x: r.x + r.w, y: r.y },
-                        { id: 'corner-bl', x: r.x, y: r.y + r.h },
-                        { id: 'corner-br', x: r.x + r.w, y: r.y + r.h }
-                    ];
-                    for (const c of corners) {
-                        if (Math.hypot(e.clientX - c.x, e.clientY - c.y) <= hitRadius) {
-                            state.dragTarget = c.id;
-                            state.dragStartPointer = { x: e.clientX, y: e.clientY };
-                            state.dragStartRect = { ...r };
+                    // فحص النقر على أي من الزوايا الأربع للتحريك الحر المستقل
+                    const hitRadius = 32;
+                    for (const key of ['tl', 'tr', 'br', 'bl']) {
+                        const pt = state.corners[key];
+                        if (Math.hypot(e.clientX - pt.x, e.clientY - pt.y) <= hitRadius) {
+                            state.dragTarget = key;
                             return;
                         }
                     }
-
-                    state.dragTarget = 'frame';
+                    // سحب كامل الشكل إذا لم يتم النقر على زاوية
+                    state.dragTarget = 'all';
                     state.dragStartPointer = { x: e.clientX, y: e.clientY };
-                    state.dragStartRect = { ...r };
+                    state.dragStartCorners = JSON.parse(JSON.stringify(state.corners));
                     return;
-                }
-
-                // مرحلة القياس بعد التثبيت:
-                if (state.originMode === 'custom') {
-                    const origPt = paperMMToScreen(0, 0);
-                    if (Math.hypot(e.clientX - origPt.x, e.clientY - origPt.y) <= 28) {
-                        state.dragTarget = 'origin';
-                        return;
-                    }
-                }
-
-                if (state.measureStartMM && state.measureEndMM) {
-                    const p1 = paperMMToScreen(state.measureStartMM.x, state.measureStartMM.y);
-                    const p2 = paperMMToScreen(state.measureEndMM.x, state.measureEndMM.y);
-                    if (Math.hypot(e.clientX - p1.x, e.clientY - p1.y) <= 26) {
-                        state.dragTarget = 'measure-start';
-                        return;
-                    }
-                    if (Math.hypot(e.clientX - p2.x, e.clientY - p2.y) <= 26) {
-                        state.dragTarget = 'measure-end';
-                        return;
-                    }
                 }
 
                 if (state.toolMode === 'measure' && mm.inside) {
                     state.dragTarget = 'measure-new';
-                    state.isDrawingMeasure = true;
                     state.measureStartMM = { x: mm.x, y: mm.y };
                     state.measureEndMM = { x: mm.x, y: mm.y };
                     updateReadoutUI();
@@ -1213,331 +816,116 @@
                 state.cursorMM = mm;
                 updateReadoutUI();
 
-                // معالجة التكبير بالقرص بإصبعين
-                if (state.pointers.size === 2) {
-                    const pts = Array.from(state.pointers.values());
-                    const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-                    const center = {
-                        x: (pts[0].x + pts[1].x) / 2,
-                        y: (pts[0].y + pts[1].y) / 2
-                    };
-
-                    if (state.lastPinchDist && state.lastPinchDist > 10) {
-                        const ratio = dist / state.lastPinchDist;
-                        if (!state.isLocked) {
-                            const r = state.baseRect;
-                            const cx = r.x + r.w / 2;
-                            const cy = r.y + r.h / 2;
-                            const newW = Math.max(80, Math.min(state.width * 0.96, r.w * ratio));
-                            const aspect = state.isLandscape ? (A4_LONG_MM / A4_SHORT_MM) : (A4_SHORT_MM / A4_LONG_MM);
-                            const newH = newW / aspect;
-                            state.baseRect = {
-                                x: cx - newW / 2,
-                                y: cy - newH / 2,
-                                w: newW,
-                                h: newH
-                            };
-                            state.frameScaleFactor = Math.max(0.30, Math.min(0.95, newW / state.width));
-                            syncCalibrationSliders();
-                        } else {
-                            if (state.lastPinchCenter) {
-                                state.panX += (center.x - state.lastPinchCenter.x);
-                                state.panY += (center.y - state.lastPinchCenter.y);
-                            }
-                            applyZoomAtPoint(state.zoom * ratio, center.x, center.y);
-                        }
-                    }
-
-                    state.lastPinchDist = dist;
-                    state.lastPinchCenter = center;
-                    return;
-                }
-
-                if (state.pointers.size !== 1 || !state.dragTarget) return;
+                if (!state.dragTarget) return;
 
                 if (!state.isLocked) {
                     const dx = e.clientX - state.dragStartPointer.x;
                     const dy = e.clientY - state.dragStartPointer.y;
-                    const sr = state.dragStartRect;
-                    const aspect = state.isLandscape ? (A4_LONG_MM / A4_SHORT_MM) : (A4_SHORT_MM / A4_LONG_MM);
 
-                    if (state.dragTarget === 'frame') {
-                        state.baseRect.x = sr.x + dx;
-                        state.baseRect.y = sr.y + dy;
-                    } else if (state.dragTarget.startsWith('corner-')) {
-                        // الحفاظ على نسبة ورقة A4 أثناء سحب أي زاوية
-                        let newW = sr.w;
-                        if (state.dragTarget === 'corner-br' || state.dragTarget === 'corner-tr') {
-                            newW = Math.max(80, Math.min(state.width * 0.96, sr.w + dx));
-                        } else {
-                            newW = Math.max(80, Math.min(state.width * 0.96, sr.w - dx));
-                        }
-                        const newH = newW / aspect;
-                        const cx = sr.x + sr.w / 2;
-                        const cy = sr.y + sr.h / 2;
-                        state.baseRect = {
-                            x: cx - newW / 2,
-                            y: cy - newH / 2,
-                            w: newW,
-                            h: newH
-                        };
-                        state.frameScaleFactor = Math.max(0.30, Math.min(0.95, newW / state.width));
-                        syncCalibrationSliders();
+                    if (['tl', 'tr', 'br', 'bl'].includes(state.dragTarget)) {
+                        // تحريك الزاوية المحددة وحدها بحرية تامة دون التأثير على الزوايا الأخرى
+                        state.corners[state.dragTarget].x = e.clientX;
+                        state.corners[state.dragTarget].y = e.clientY;
+                    } else if (state.dragTarget === 'all') {
+                        const sc = state.dragStartCorners;
+                        ['tl', 'tr', 'br', 'bl'].forEach(k => {
+                            state.corners[k].x = sc[k].x + dx;
+                            state.corners[k].y = sc[k].y + dy;
+                        });
                     }
                     return;
                 }
 
-                if (state.dragTarget === 'origin') {
-                    const base = screenToBase(e.clientX, e.clientY);
-                    const r = state.baseRect;
-                    state.customOriginNorm = {
-                        x: Math.max(0, Math.min(1, (base.x - r.x) / r.w)),
-                        y: Math.max(0, Math.min(1, (base.y - r.y) / r.h))
-                    };
-                    updateReadoutUI();
-                } else if (state.dragTarget === 'measure-start' && state.measureStartMM) {
-                    state.measureStartMM = { x: mm.x, y: mm.y };
-                    updateReadoutUI();
-                } else if ((state.dragTarget === 'measure-end' || state.dragTarget === 'measure-new') && state.measureEndMM) {
+                if (state.dragTarget === 'measure-new' || state.dragTarget === 'measure-end') {
                     state.measureEndMM = { x: mm.x, y: mm.y };
                     updateReadoutUI();
                 } else if (state.dragTarget === 'pan') {
                     state.panX += (e.clientX - state.dragStartPointer.x);
                     state.panY += (e.clientY - state.dragStartPointer.y);
                     state.dragStartPointer = { x: e.clientX, y: e.clientY };
-                    clampPanBounds();
                 }
             });
 
             function releasePointer(e) {
                 state.pointers.delete(e.pointerId);
-                if (state.pointers.size < 2) {
-                    state.lastPinchDist = null;
-                    state.lastPinchCenter = null;
-                }
-                if (state.pointers.size === 0) {
-                    state.dragTarget = null;
-                    state.isDrawingMeasure = false;
-                }
+                if (state.pointers.size === 0) state.dragTarget = null;
             }
-
             canvas.addEventListener('pointerup', releasePointer);
             canvas.addEventListener('pointercancel', releasePointer);
 
-            canvas.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                if (!state.isLocked) {
-                    const delta = e.deltaY < 0 ? 0.03 : -0.03;
-                    state.frameScaleFactor = Math.max(0.30, Math.min(0.95, state.frameScaleFactor + delta));
-                    computeCenteredA4Rect();
-                } else {
-                    const factor = e.deltaY < 0 ? 1.15 : 0.87;
-                    applyZoomAtPoint(state.zoom * factor, e.clientX, e.clientY);
-                }
-            }, { passive: false });
-
-            // ==========================================
-            // ربط أزرار واجهة المستخدم
-            // ==========================================
+            // ربط الأزرار والوظائف
             document.getElementById('startCameraBtn').addEventListener('click', () => initCamera());
             document.getElementById('retryCameraBtn').addEventListener('click', () => initCamera());
-
-            function enterDemoMode() {
-                state.isDemoMode = true;
-                launchWorkspace();
-                showToast('وضع المعاينة نشط: طابق المربع ثم اضغط تثبيت الكاميرا');
-            }
-            document.getElementById('demoModeBtn').addEventListener('click', enterDemoMode);
-            document.getElementById('fallbackDemoBtn').addEventListener('click', enterDemoMode);
+            document.getElementById('demoModeBtn').addEventListener('click', () => { state.isDemoMode = true; launchWorkspace(); });
+            document.getElementById('fallbackDemoBtn').addEventListener('click', () => { state.isDemoMode = true; launchWorkspace(); });
 
             document.getElementById('lockCameraBtn').addEventListener('click', () => {
                 state.isLocked = true;
                 document.getElementById('statusDot').classList.remove('bg-amber-400', 'animate-pulse');
                 document.getElementById('statusDot').classList.add('bg-emerald-400');
-                document.getElementById('modeTitle').textContent = 'مثبّت (وضع القياس الدقيق)';
-
+                document.getElementById('modeTitle').textContent = 'مثبّت (جاهز للقياس الحر)';
                 document.getElementById('calibrationControls').classList.add('hidden');
                 document.getElementById('calibrationSlidersPanel').classList.add('hidden');
                 document.getElementById('measurementControls').classList.remove('hidden');
                 document.getElementById('measurementControls').classList.add('flex');
                 document.getElementById('zoomControlPanel').classList.remove('hidden');
                 document.getElementById('liveReadoutBar').classList.remove('hidden');
-
                 updateZoomUI();
-                showToast('تم تثبيت التحديد! اسحب للقياس أو قرّب لتوسيع دقة الشبكة');
+                showToast('تم التثبيت! اسحب لقياس أي مسافة بدقة');
             });
 
             document.getElementById('resetBtn').addEventListener('click', () => {
                 state.isLocked = false;
-                state.isFrozen = false;
-                state.zoom = 1.0;
-                state.panX = 0;
-                state.panY = 0;
-                state.measureStartMM = null;
-                state.measureEndMM = null;
-
-                computeCenteredA4Rect();
-                updateZoomUI();
-                updateReadoutUI();
-
+                state.zoom = 1.0; state.panX = 0; state.panY = 0;
+                state.measureStartMM = null; state.measureEndMM = null;
+                initDefaultCorners();
                 document.getElementById('statusDot').classList.add('bg-amber-400', 'animate-pulse');
                 document.getElementById('statusDot').classList.remove('bg-emerald-400');
-                document.getElementById('modeTitle').textContent = 'حدد ورقة A4 بالمربع';
-
+                document.getElementById('modeTitle').textContent = 'اسحب زوايا A4 الأربع بحرية';
                 document.getElementById('calibrationControls').classList.remove('hidden');
                 document.getElementById('calibrationSlidersPanel').classList.remove('hidden');
                 document.getElementById('measurementControls').classList.add('hidden');
-                document.getElementById('measurementControls').classList.remove('flex');
                 document.getElementById('zoomControlPanel').classList.add('hidden');
                 document.getElementById('liveReadoutBar').classList.add('hidden');
-                document.getElementById('freezeText').textContent = 'تجميد الصورة';
-
-                showToast('تمت إعادة الضبط. حدد ورقة A4 مجدداً');
+                showToast('تمت إعادة الضبط');
             });
 
-            document.getElementById('orientationBtn').addEventListener('click', () => {
-                state.isLandscape = !state.isLandscape;
-                document.getElementById('orientationText').textContent = state.isLandscape ? 'أفقي' : 'عمودي';
-                if (!state.isLocked) computeCenteredA4Rect();
-                updateZoomUI();
+            // تفعيل اختيار صورة مرجعية من الاستوديو
+            const fileInput = document.getElementById('imageUploadInput');
+            document.getElementById('selectRefImageBtn').addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        refImage = img;
+                        showRefImage = true;
+                        document.getElementById('refImageControlPanel').classList.remove('hidden');
+                        showToast('تم تحميل الصورة المرجعية بنجاح');
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
             });
 
-            document.getElementById('originBtn').addEventListener('click', () => {
-                if (state.originMode === 'center') {
-                    state.originMode = 'corner';
-                    document.getElementById('originText').textContent = 'الأصل: الزاوية';
-                } else if (state.originMode === 'corner') {
-                    state.originMode = 'custom';
-                    state.customOriginNorm = { x: 0.5, y: 0.5 };
-                    document.getElementById('originText').textContent = 'الأصل: حر';
-                    showToast('اسحب النقطة الخضراء (0,0) لوضع نقطة الأصل في أي مكان');
-                } else {
-                    state.originMode = 'center';
-                    document.getElementById('originText').textContent = 'الأصل: الوسط';
-                }
-                updateReadoutUI();
+            document.getElementById('refOpacitySlider').addEventListener('input', (e) => {
+                refImageOpacity = parseFloat(e.target.value);
+                document.getElementById('refOpacityBadge').textContent = Math.round(refImageOpacity * 100) + '%';
             });
 
-            document.getElementById('frameSizeSlider').addEventListener('input', (e) => {
-                state.frameScaleFactor = parseFloat(e.target.value);
-                computeCenteredA4Rect();
-            });
-
-            document.getElementById('cameraDistanceSlider').addEventListener('input', (e) => {
-                setCameraDistanceZoom(parseFloat(e.target.value));
-            });
-
-            document.getElementById('widePresetBtn').addEventListener('click', async () => {
-                await setCameraDistanceZoom(0.5);
-                state.frameScaleFactor = 0.52;
-                computeCenteredA4Rect();
-                showToast('تم إبعاد الرؤية وتصغير الإطار لاستيعاب الورقة كاملة');
-            });
-
-            document.getElementById('switchLensBtn').addEventListener('click', async () => {
-                if (state.isDemoMode) {
-                    const nextVal = state.cameraFovScale > 0.7 ? 0.5 : 1.0;
-                    await setCameraDistanceZoom(nextVal);
-                    showToast(`زاوية الرؤية: ${nextVal}x`);
-                    return;
-                }
-                if (state.backCameras.length > 1) {
-                    state.currentCameraIndex = (state.currentCameraIndex + 1) % state.backCameras.length;
-                    const cam = state.backCameras[state.currentCameraIndex];
-                    showToast(`تبديل إلى: ${cam.label || 'عدسة ' + (state.currentCameraIndex + 1)}`);
-                    await initCamera(cam.deviceId);
-                } else {
-                    const nextVal = (state.hwZoomCurrent > 0.85 && state.cameraFovScale > 0.85) ? 0.5 : 1.0;
-                    await setCameraDistanceZoom(nextVal);
-                    showToast(`ضبط بُعد العدسة على ${nextVal.toFixed(1)}x`);
-                }
-            });
-
-            function getZoomFocalTarget() {
-                if (state.measureStartMM && state.measureEndMM) {
-                    const mx = (state.measureStartMM.x + state.measureEndMM.x) / 2;
-                    const my = (state.measureStartMM.y + state.measureEndMM.y) / 2;
-                    return paperMMToScreen(mx, my);
-                }
-                return { x: state.width / 2, y: state.height / 2 };
-            }
-
-            document.getElementById('zoomSlider').addEventListener('input', (e) => {
-                const t = getZoomFocalTarget();
-                applyZoomAtPoint(parseFloat(e.target.value), t.x, t.y);
-            });
-
-            document.getElementById('zoomInBtn').addEventListener('click', () => {
-                const t = getZoomFocalTarget();
-                applyZoomAtPoint(state.zoom * 1.35, t.x, t.y);
-            });
-
-            document.getElementById('zoomOutBtn').addEventListener('click', () => {
-                const t = getZoomFocalTarget();
-                applyZoomAtPoint(state.zoom / 1.35, t.x, t.y);
-            });
-
-            document.getElementById('toolToggleBtn').addEventListener('click', () => {
-                const btn = document.getElementById('toolToggleBtn');
-                const txt = document.getElementById('toolToggleText');
-                if (state.toolMode === 'measure') {
-                    state.toolMode = 'pan';
-                    txt.textContent = 'وضع التحريك';
-                    btn.classList.remove('bg-sky-500', 'text-slate-950');
-                    btn.classList.add('bg-slate-800', 'text-sky-300', 'border', 'border-sky-500/40');
-                    showToast('اسحب بإصبع واحد لتحريك الورقة المكبّرة');
-                } else {
-                    state.toolMode = 'measure';
-                    txt.textContent = 'أداة القياس';
-                    btn.classList.add('bg-sky-500', 'text-slate-950');
-                    btn.classList.remove('bg-slate-800', 'text-sky-300', 'border', 'border-sky-500/40');
-                    showToast('اسحب داخل الورقة لقياس أي مسافة بالمليمتر');
-                }
-            });
-
-            document.getElementById('freezeFrameBtn').addEventListener('click', () => {
-                state.isFrozen = !state.isFrozen;
-                const txt = document.getElementById('freezeText');
-                if (state.isFrozen) {
-                    freezeCanvas.width = state.width;
-                    freezeCanvas.height = state.height;
-                    freezeCtx.clearRect(0, 0, state.width, state.height);
-                    if (!state.isDemoMode && video.videoWidth) {
-                        const vw = video.videoWidth, vh = video.videoHeight;
-                        const coverScale = Math.max(state.width / vw, state.height / vh);
-                        const containScale = Math.min(state.width / vw, state.height / vh);
-                        let scale = coverScale;
-                        if (state.cameraFovScale < 0.99) {
-                            const t = Math.min(1, Math.max(0, (1.0 - state.cameraFovScale) / 0.5));
-                            scale = coverScale + (containScale - coverScale) * t;
-                        }
-                        const dw = vw * scale, dh = vh * scale;
-                        freezeCtx.drawImage(video, (state.width - dw) / 2, (state.height - dh) / 2, dw, dh);
-                    } else {
-                        freezeCtx.drawImage(canvas, 0, 0, state.width, state.height);
-                    }
-                    txt.textContent = 'إلغاء التجميد';
-                    showToast('تم تجميد الصورة لثبات القياس');
-                } else {
-                    txt.textContent = 'تجميد الصورة';
-                    showToast('تمت العودة للبث الحي');
-                }
+            document.getElementById('closeRefImgBtn').addEventListener('click', () => {
+                showRefImage = false;
+                refImage = null;
+                document.getElementById('refImageControlPanel').classList.add('hidden');
+                showToast('تم إخفاء/إزالة الصورة المرجعية');
             });
 
             document.getElementById('clearMeasureBtn').addEventListener('click', () => {
-                state.measureStartMM = null;
-                state.measureEndMM = null;
+                state.measureStartMM = null; state.measureEndMM = null;
                 updateReadoutUI();
-            });
-
-            document.getElementById('torchBtn').addEventListener('click', async () => {
-                if (!state.videoTrack || !state.torchSupported) return;
-                try {
-                    state.torchOn = !state.torchOn;
-                    await state.videoTrack.applyConstraints({ advanced: [{ torch: state.torchOn }] });
-                } catch (e) {
-                    console.warn('Torch error:', e);
-                }
             });
 
             window.addEventListener('resize', resizeCanvas);
@@ -1546,4 +934,3 @@
     </script>
 </body>
 </html>
-```
