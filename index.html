@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#101820">
+<title>مسطرة A4 الذكية</title>
+<style>
+:root{--bg:#101820;--panel:#1b2833;--line:#53d6c7;--text:#edf4f7;--muted:#a9bac4}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Tahoma,Arial}
+header{padding:14px 16px;text-align:center;background:#17232d;border-bottom:1px solid #2b3c49}
+h1{font-size:20px;margin:0 0 4px}header p{margin:0;color:var(--muted);font-size:12px}
+main{max-width:1000px;margin:auto;padding:12px;display:grid;gap:12px}
+.stage{position:relative;width:100%;height:min(62vh,650px);min-height:340px;background:#05090c;border:1px solid #344653;border-radius:14px;overflow:hidden;touch-action:none}
+video,#still{position:absolute;width:100%;height:100%;inset:0;object-fit:contain;background:#05090c}
+#still{display:none}
+#zoomLayer{position:absolute;inset:0;transform-origin:50% 50%;pointer-events:none}
+#frame{position:absolute;left:20%;top:8%;width:60%;height:84%;border:2px solid var(--line);box-shadow:0 0 0 9999px #0007;touch-action:none;cursor:move;pointer-events:auto}
+#frame.locked{border-color:#ffd166;box-shadow:0 0 0 9999px #0009}
+#frame:after{content:"A4 · 210 × 297 mm";position:absolute;top:-25px;right:0;font-size:12px;color:#fff;background:#087f78;padding:3px 8px;border-radius:5px;white-space:nowrap}
+.handle{position:absolute;width:20px;height:20px;border:2px solid #fff;background:var(--line);border-radius:50%;z-index:3}
+.tl{left:-10px;top:-10px}.tr{right:-10px;top:-10px}.bl{left:-10px;bottom:-10px}.br{right:-10px;bottom:-10px}
+#grid{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#overlay{position:absolute;max-width:none;max-height:none;object-fit:fill;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;display:none}
+.hint{position:absolute;bottom:8px;left:8px;background:#000b;color:#fff;padding:5px 8px;border-radius:6px;font-size:11px;pointer-events:none}
+.panel{background:var(--panel);border:1px solid #2b3c49;border-radius:12px;padding:12px}
+.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+button,.filelabel,select{border:0;border-radius:9px;padding:11px 10px;background:#2b4655;color:white;font-weight:650;font-size:14px;cursor:pointer;text-align:center}
+button.primary{background:#087f78}button.warn{background:#74552a}button:disabled{opacity:.4}
+input[type=file]{display:none}label.control{display:grid;gap:6px;font-size:13px;color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--line)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+small,.note{color:var(--muted);font-size:12px;line-height:1.6}
+.status{font-size:12px;color:#9fe8d8;min-height:22px;margin-top:9px;line-height:1.6;overflow-wrap:anywhere}
+.status.error{color:#ffb4a9}.status.ok{color:#9fe8d8}
+select{width:100%;background:#263b49}
+@media(min-width:760px){main{grid-template-columns:1fr 290px;align-items:start}.stage{height:75vh;grid-row:span 2}.controls{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><h1>مسطرة A4 الذكية</h1><p>معايرة الورقة · شبكة إحداثيات · تكبير · صورة شفافة</p></header>
+<main>
+<section class="stage" id="stage">
+ <video id="cam" autoplay playsinline muted></video><img id="still" alt="صورة الكاميرا المجمدة">
+ <div id="zoomLayer"><div id="frame"><canvas id="grid"></canvas>
+  <i class="handle tl" data-corner="tl"></i><i class="handle tr" data-corner="tr"></i><i class="handle bl" data-corner="bl"></i><i class="handle br" data-corner="br"></i>
+ </div><img id="overlay" alt="الصورة المرجعية"></div>
+ <div class="hint" id="hint">حرّك إطار A4 فوق الورقة واسحب الزوايا لتغيير حجمه</div>
+</section>
+<section class="panel">
+ <div class="controls">
+  <button class="primary" id="start">تشغيل الكاميرا</button><button id="stop">إيقاف الكاميرا</button>
+  <label class="control" style="grid-column:1/-1">اختيار العدسة / الكاميرا
+   <select id="cameraSelect" disabled><option>شغّل الكاميرا أولاً</option></select>
+  </label>
+  <button class="warn" id="lock">تثبيت تحديد A4</button><button id="unlock" disabled>تحرير التحديد</button>
+  <button id="reset">إعادة ضبط الإطار</button><button id="shot">تجميد الصورة</button>
+  <label class="filelabel" for="photo">اختيار صورة من الاستوديو</label><input id="photo" type="file" accept="image/*">
+  <button id="remove">إزالة الصورة</button>
+ </div>
+ <div class="status" id="status" role="status">ملاحظة: يجب فتح هذه الصفحة من رابط HTTPS حتى تعمل الكاميرا. ملف الهاتف المباشر لا يسمح عادةً بتشغيلها.</div>
+</section>
+<section class="panel">
+ <label class="control">التكبير الرقمي: <span class="row"><b id="zoomVal">1.00×</b><small>0.25× – 8×</small></span>
+ <input id="zoom" type="range" min=".25" max="8" step=".05" value="1"></label>
+ <label class="control" style="margin-top:14px">شفافية الصورة: <b id="opacityVal">45%</b><input id="opacity" type="range" min="0" max="100" value="45"></label>
+ <label class="control" style="margin-top:14px">حجم الصورة: <b id="sizeVal">100%</b><input id="size" type="range" min="10" max="200" value="100"></label>
+ <div class="row" style="margin-top:14px"><span>إظهار الشبكة</span><input id="gridOn" type="checkbox" checked></div>
+ <div class="row"><span>تقسيم المليمتر</span><input id="mmOn" type="checkbox" checked></div>
+ <p class="note">الإطار يمثل مساحة A4 بنسبة 210:297. الخطوط الرئيسية كل 1 سم، والخطوط الدقيقة كل 1 مم. الشبكة مرسومة كنسبة داخل الإطار وليست قياساً بصرياً مستقلاً قبل ضبط حدود الورقة بدقة.</p>
+ <p class="note">التكبير هنا رقمي للعرض، ولا يضيف تفاصيل غير موجودة في دقة الكاميرا.</p>
+ <div class="note" id="measure">المرجع: 210 × 297 mm</div>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id),cam=$('cam'),still=$('still'),frame=$('frame'),stage=$('stage'),grid=$('grid'),zoomLayer=$('zoomLayer'),overlay=$('overlay');
+let stream=null,locked=false,facing='environment',frozen=false,zoom=1,drag=null,activeDeviceId=null;
+function msg(t,type='ok'){$('status').textContent=t;$('status').className='status '+type}
+function drawGrid(){
+ const r=frame.getBoundingClientRect(),dpr=window.devicePixelRatio||1,w=Math.max(1,r.width),h=Math.max(1,r.height);
+ grid.width=Math.round(w*dpr);grid.height=Math.round(h*dpr);let c=grid.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,w,h);
+ if(!$('gridOn').checked)return;
+ for(let i=0;i<=210;i++){let x=w*i/210,major=i%10===0;if(!major&&!$('mmOn').checked)continue;c.beginPath();c.strokeStyle='#00a99d';c.globalAlpha=major?.75:.24;c.lineWidth=major?1:.55;c.moveTo(x,0);c.lineTo(x,h);c.stroke()}
+ for(let j=0;j<=297;j++){let y=h*j/297,major=j%10===0;if(!major&&!$('mmOn').checked)continue;c.beginPath();c.strokeStyle='#00a99d';c.globalAlpha=major?.75:.24;c.lineWidth=major?1:.55;c.moveTo(0,y);c.lineTo(w,y);c.stroke()}
+ c.globalAlpha=1;c.fillStyle='#fff';c.font='10px system-ui';c.shadowColor='#000';c.shadowBlur=3;
+ for(let i=0;i<=20;i+=2)c.fillText(String(i),Math.min(w-12,w*i/21+2),12);
+}
+function setZoom(v){zoom=Number(v);$('zoomVal').textContent=zoom.toFixed(2)+'×';zoomLayer.style.transform=`scale(${zoom})`;drawGrid()}
+$('zoom').addEventListener('input',e=>setZoom(e.target.value));
+$('gridOn').onchange=drawGrid;$('mmOn').onchange=drawGrid;window.addEventListener('resize',drawGrid);
+function stopCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}cam.srcObject=null;$('cameraSelect').disabled=true}
+async function refreshCameras(){
+ try{
+  const devices=await navigator.mediaDevices.enumerateDevices(),cams=devices.filter(d=>d.kind==='videoinput'),sel=$('cameraSelect');
+  sel.innerHTML='';
+  cams.forEach((d,i)=>{let o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||`كاميرا ${i+1}`;sel.appendChild(o)});
+  if(activeDeviceId)sel.value=activeDeviceId;
+  sel.disabled=cams.length===0;
+ }catch(e){/* optional device list */}
+}
+async function startCamera(deviceId=null){
+ if(!window.isSecureContext){msg('المتصفح يمنع الكاميرا لأن الصفحة ليست في سياق آمن. ارفع الملف إلى Netlify وافتح رابط HTTPS، ولا تفتحه من مدير الملفات.','error');return}
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){msg('هذا المتصفح لا يدعم تشغيل الكاميرا. افتح رابط HTTPS في Chrome محدّث.','error');return}
+ stopCamera();msg('جارٍ طلب إذن الكاميرا…');
+ try{
+  const constraints={audio:false,video:deviceId?{deviceId:{exact:deviceId},width:{ideal:1920},height:{ideal:1080}}:{facingMode:{ideal:facing},width:{ideal:1920},height:{ideal:1080}}};
+  stream=await navigator.mediaDevices.getUserMedia(constraints);
+  cam.srcObject=stream;cam.style.display='block';still.style.display='none';frozen=false;
+  await cam.play();
+  const track=stream.getVideoTracks()[0];activeDeviceId=track.getSettings().deviceId||deviceId;
+  $('shot').textContent='تجميد الصورة';await refreshCameras();
+  msg('الكاميرا تعمل بنجاح. ضع إطار A4 فوق الورقة ثم اضغط «تثبيت تحديد A4».');
+ }catch(e){
+  let explanation='';
+  if(e.name==='NotAllowedError'||e.name==='PermissionDeniedError')explanation='تم رفض إذن الكاميرا. افتح إعدادات الموقع في Chrome واسمح باستخدام الكاميرا.';
+  else if(e.name==='NotFoundError'||e.name==='DevicesNotFoundError')explanation='لم يتم العثور على كاميرا متاحة.';
+  else if(e.name==='NotReadableError'||e.name==='TrackStartError')explanation='الكاميرا مستخدمة من تطبيق آخر. أغلق تطبيق الكاميرا أو مكالمة الفيديو ثم أعد المحاولة.';
+  else if(e.name==='OverconstrainedError')explanation='تعذّر تشغيل الكاميرا المختارة. جرّب اختيار كاميرا أخرى.';
+  else explanation=`تعذّر تشغيل الكاميرا (${e.name||'خطأ غير معروف'}): ${e.message||'تحقق من إذن الكاميرا والمتصفح.'}`;
+  msg(explanation,'error');
+ }
+}
+$('start').onclick=()=>startCamera();
+$('stop').onclick=()=>{stopCamera();msg('تم إيقاف الكاميرا.')};
+$('cameraSelect').onchange=e=>{if(e.target.value)startCamera(e.target.value)};
+$('lock').onclick=()=>{locked=true;frame.classList.add('locked');$('lock').disabled=true;$('unlock').disabled=false;$('hint').textContent='تم تثبيت إطار A4 · كبّر العرض حول المنطقة المطلوبة';msg('تم تثبيت الإطار. الشبكة محسوبة نسبةً إلى مساحة A4 المحددة.')};
+$('unlock').onclick=()=>{locked=false;frame.classList.remove('locked');$('lock').disabled=false;$('unlock').disabled=true;$('hint').textContent='حرّك إطار A4 واسحب الزوايا لتعديل حدوده';msg('تم تحرير الإطار.')};
+$('reset').onclick=()=>{applyFrame({x:20,y:8,w:60,h:84});locked=false;frame.classList.remove('locked');$('lock').disabled=false;$('unlock').disabled=true};
+function applyFrame(b){frame.style.left=b.x+'%';frame.style.top=b.y+'%';frame.style.width=b.w+'%';frame.style.height=b.h+'%';drawGrid()}
+let base={x:20,y:8,w:60,h:84};applyFrame(base);
+frame.addEventListener('pointerdown',e=>{if(locked)return;drag={x:e.clientX,y:e.clientY,corner:e.target.dataset.corner||null,base:{...base}};frame.setPointerCapture(e.pointerId);e.preventDefault()});
+frame.addEventListener('pointermove',e=>{
+ if(!drag)return;let rect=stage.getBoundingClientRect(),dx=(e.clientX-drag.x)/rect.width*100,dy=(e.clientY-drag.y)/rect.height*100,b=drag.base;
+ if(!drag.corner){base.x=Math.max(0,Math.min(100-b.w,b.x+dx));base.y=Math.max(0,Math.min(100-b.h,b.y+dy))}
+ else{
+  if(drag.corner.includes('r'))base.w=Math.max(20,Math.min(100-b.x,b.w+dx));else{let right=b.x+b.w;base.x=Math.max(0,Math.min(right-20,b.x+dx));base.w=right-base.x}
+  let desiredH=base.w*(rect.width/rect.height)*297/210;
+  if(drag.corner.includes('b'))base.h=Math.max(20,Math.min(100-b.y,desiredH));else{let bottom=b.y+b.h;base.y=Math.max(0,Math.min(bottom-20,bottom-desiredH));base.h=bottom-base.y}
+ }
+ applyFrame(base);
+});
+frame.addEventListener('pointerup',()=>drag=null);frame.addEventListener('pointercancel',()=>drag=null);
+$('shot').onclick=()=>{if(!stream){msg('شغّل الكاميرا أولاً.','error');return}if(!frozen){let c=document.createElement('canvas');c.width=cam.videoWidth;c.height=cam.videoHeight;c.getContext('2d').drawImage(cam,0,0);still.src=c.toDataURL('image/jpeg',.92);still.style.display='block';cam.style.display='none';frozen=true;$('shot').textContent='متابعة الكاميرا';msg('تم تجميد الصورة الحالية.')}else{still.style.display='none';cam.style.display='block';frozen=false;$('shot').textContent='تجميد الصورة';msg('عادت الصورة الحية.')}};
+$('photo').onchange=e=>{let f=e.target.files[0];if(!f)return;let u=URL.createObjectURL(f);overlay.onload=()=>{overlay.style.display='block';overlay.style.opacity=$('opacity').value/100;overlay.style.width=$('size').value+'%';overlay.style.height='auto'};overlay.src=u};
+$('remove').onclick=()=>{overlay.style.display='none';overlay.src='';$('photo').value=''};
+$('opacity').oninput=e=>{overlay.style.opacity=e.target.value/100;$('opacityVal').textContent=e.target.value+'%'};
+$('size').oninput=e=>{overlay.style.width=e.target.value+'%';$('sizeVal').textContent=e.target.value+'%'};
+setZoom(1);
+if(!window.isSecureContext)msg('تنبيه: افتح الصفحة من رابط HTTPS. تشغيل ملف HTML مباشرة من الهاتف يمنع الكاميرا غالباً.','error');
+</script>
+</body></html>
